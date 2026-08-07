@@ -10,9 +10,8 @@
 [![daily](https://github.com/d2lang/d2/actions/workflows/daily.yml/badge.svg)](https://github.com/d2lang/d2/actions/workflows/daily.yml)
 [![release](https://img.shields.io/github/v/release/d2lang/d2)](https://github.com/d2lang/d2/releases)
 [![changelog](https://img.shields.io/badge/changelog-read-blue)](./CHANGELOG.md)
-[![npm version](https://img.shields.io/npm/v/@terrastruct/d2)](https://www.npmjs.com/package/@terrastruct/d2)
+[![npm version](https://img.shields.io/npm/v/@d2lang/d2)](https://www.npmjs.com/package/@d2lang/d2)
 [![discord](https://img.shields.io/discord/1039184639652265985?label=discord)](https://discord.gg/NF6X8K4eDq)
-[![twitter](https://img.shields.io/twitter/follow/terrastruct?style=social)](https://twitter.com/terrastruct)
 [![license](https://img.shields.io/github/license/d2lang/d2?color=9cf)](./LICENSE.txt)
 
 <a href="https://play.d2lang.com">
@@ -137,7 +136,7 @@ to install without executing them.
 Or if you have Go installed you can install from source though you won't get the manpage:
 
 ```sh
-go install oss.terrastruct.com/d2@latest
+go install github.com/d2lang/d2@latest
 ```
 
 You can also install a release from source which will include manpages.
@@ -161,9 +160,7 @@ improved security but the install script is by no means insecure.
 In addition to being a runnable CLI tool, D2 can also be used to produce diagrams from
 Go programs.
 
-For examples, see [./docs/examples/lib](./docs/examples/lib). This [blog
-post](https://terrastruct.com/blog/post/generate-diagrams-programmatically/) also demos a
-complete, runnable example of using D2 as a library for a real-world use case.
+For examples, see [./docs/examples/lib](./docs/examples/lib).
 
 ## Themes
 
@@ -235,8 +232,6 @@ let us know and we'll be happy to include it here!
 - **VSCode extension**: [https://github.com/d2lang/d2-vscode](https://github.com/d2lang/d2-vscode)
 - **Vim extension**: [https://github.com/d2lang/d2-vim](https://github.com/d2lang/d2-vim)
 - **Obsidian plugin**: [https://github.com/d2lang/d2-obsidian](https://github.com/d2lang/d2-obsidian)
-- **Slack app**: [https://d2lang.com/tour/slack](https://d2lang.com/tour/slack)
-- **Discord plugin**: [https://d2lang.com/tour/discord](https://d2lang.com/tour/discord)
 
 ### Community plugins
 
@@ -273,10 +268,10 @@ let us know and we'll be happy to include it here!
 
 ### Misc
 
-- **Comparison site**: [https://github.com/terrastruct/text-to-diagram-site](https://github.com/terrastruct/text-to-diagram-site)
+- **Comparison site**: [https://github.com/d2lang/text-to-diagram-site](https://github.com/d2lang/text-to-diagram-site)
 - **Playground**: [https://github.com/d2lang/d2-playground](https://github.com/d2lang/d2-playground)
 - **Language docs**: [https://github.com/d2lang/d2-docs](https://github.com/d2lang/d2-docs)
-- **Hosted icons**: [https://icons.terrastruct.com](https://icons.terrastruct.com)
+- **Hosted icons**: [https://icons.d2lang.com](https://icons.d2lang.com)
 
 ## FAQ
 

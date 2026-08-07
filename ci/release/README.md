@@ -1,5 +1,40 @@
 # release
 
+## npm publishing
+
+`@d2lang/d2` is the canonical JavaScript package. `@terrastruct/d2` is published from the
+same built files as a compatibility package during the namespace transition. The
+`npm-stage.yml` workflow stages both package names for review with npm trusted publishing;
+each staged package has its own stage ID and must be reviewed and approved separately. If
+one stage succeeds and the other fails, use GitHub's **Re-run failed jobs** action on the
+same workflow run. That preserves the original commit and reuses the same immutable
+package artifact; do not use **Re-run all jobs** or start a fresh workflow dispatch to
+recover only one identity.
+
+Before staging an official version, bump `d2js/js/package.json` and `package-lock.json` to
+that exact version in a signed commit. Nightly stages derive their prerelease version from
+the checked-in version automatically. `@d2lang/d2` must already exist and both packages
+must separately trust the `d2lang/d2` `npm-stage.yml` workflow for stage-only publishing.
+Each trusted publisher is restricted to the `npm-release` GitHub environment, whose
+deployment branch policy accepts only protected branches. The workflow itself also
+refuses to pack from any ref other than `refs/heads/master`.
+The canonical package was bootstrapped once from the existing `@terrastruct/d2@0.1.33`
+built artifacts because npm does not allow a brand-new package to use staged publishing.
+
+Direct publishing is retained only for local bootstrap or recovery. It requires a
+short-lived `NPM_TOKEN` that can publish every selected package and is not stored in GitHub.
+The script pre-packs and preflights every selected package before publishing; a retry skips
+an existing version only when its registry tarball integrity exactly matches the local
+artifact.
+
+After the workflow finishes, confirm both matrix stage jobs are green and inspect the two
+pending records with `npm stage list` and `npm stage view <stage-id>`. Approve each only
+after their package versions and artifacts from `npm stage download <stage-id>` match.
+Use `npm stage approve <stage-id>` for each identity. If the release is abandoned, reject
+every pending half with
+`npm stage reject <stage-id>` before starting another run. A pending stage reserves its
+package/version, so list pending stages before retrying any failed job.
+
 ## _install.sh
 
 The template for the install script in the root of the d2 repository.
@@ -25,15 +60,90 @@ it depends on from ../sub/lib.
 
 Use `--host-only` to build only the release for the host's `$OS-$ARCH` pair.
 
-### build_docker.sh
+### Docker image helper
 
-Helper script called by build.sh to build D2 on each linux runner inside Docker.
-The Dockerfile is in ./linux/Dockerfile
+`./docker/build.sh` is retained as a load-only local development helper. It rejects
+`--push`, `--latest`, and inherited `RELEASE` publishing. The release script no longer
+calls it or publishes Docker tags from a legacy AWS SSH builder.
+
+### Production Docker publishing
+
+The manually dispatched `Publish Docker release` GitHub workflow is the production path
+for Docker Hub. It replaces only the Docker portion of the legacy AWS release path; the
+other release asset builders are unchanged.
+
+Run it from the protected `master` branch after the GitHub release is published. Enter the
+exact v-prefixed release version and leave `publish_latest` off unless this stable release
+should become the default Docker image. The workflow rejects `publish_latest` for a GitHub
+prerelease or a semver prerelease.
+
+The `docker-release` GitHub environment must provide a `DOCKERHUB_USERNAME` variable set
+to `d2lang` and a `DOCKERHUB_TOKEN` secret containing a personal access token for that
+Docker ID. The Docker ID must have write access to both the canonical `d2lang/d2`
+repository and the maintained `terrastruct/d2` compatibility mirror. The environment's
+deployment branch policy must
+allow only protected branches. Docker Hub tag immutability must remain enabled on both
+repositories for version tags with
+`^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?$`; `latest` remains outside
+that rule and mutable. This repository-side rule is the final overwrite guard.
+
+Before publishing a production tag, the workflow:
+
+1. verifies the protected-master dispatch, published non-draft semver GitHub release, exact
+   Linux amd64 and arm64 asset IDs, and their GitHub SHA-256 digests;
+2. explicitly peels the Git tag to a commit, requires that commit to be an ancestor of the
+   dispatched `master` commit, and uses that release commit's Dockerfile;
+3. builds on native GitHub-hosted amd64 and arm64 runners and pushes only untagged digests
+   with provenance;
+4. runs native version, SVG, and PNG smoke tests for both digests; and
+5. dry-runs and validates the exact two-platform manifest, including provenance
+   attestations; then
+6. immediately re-fetches the release and re-peels its tag, requiring the release ID,
+   publication/prerelease state, tag commit, asset IDs, and asset digests to be unchanged.
+
+Only then does it create the requested version tag in the canonical repository and its
+compatibility mirror. Existing version tags are immutable, so the workflow refuses to
+overwrite one. If `publish_latest` was explicitly selected, it updates `latest` in both
+repositories from the immutable version-manifest digest only after the version manifests
+are published and verified. If verification or `latest` promotion fails after a version
+tag was created, use GitHub's **Re-run failed jobs** action: the same run accepts an
+existing version tag only when its descriptors exactly match that run's verified candidate,
+and the separate `latest` job can retry without touching the version tags. A new dispatch
+still refuses any existing version tag during preflight.
+
+### Docker continuity test
+
+The manually dispatched `Docker continuity test` GitHub workflow proves that an existing,
+published D2 release can be rebuilt for Docker Hub without the legacy AWS builders. It
+downloads the release's exact Linux archives, builds on native GitHub-hosted amd64 and arm64
+runners, verifies the images, and publishes only
+`d2lang/d2:continuity-test-<workflow-run-id>-<attempt>` and the matching
+`terrastruct/d2` compatibility tag. It never updates a release version tag or `latest`.
+
+Dispatch the workflow from the protected `master` branch. The version input must name a
+published, non-draft GitHub release with both Linux archives; `v0.7.1` is the default
+continuity fixture. The workflow removes both test tags after verification. If Docker Hub
+rejects either cleanup request, the cleanup job fails instead of silently leaving a test
+tag behind. Because collaborators on personal Docker Hub repositories cannot delete tags,
+the `docker-release` environment must also provide two owner-scoped secrets with Read,
+Write, Delete permission: `DOCKERHUB_D2LANG_DELETE_TOKEN` from the `d2lang` Docker ID and
+`DOCKERHUB_TERRASTRUCT_DELETE_TOKEN` from the `terrastruct` Docker ID. Cleanup is restricted
+to the exact `d2lang/d2` and `terrastruct/d2` test tags for the current workflow run and
+verifies that each tag is absent after deletion.
+
+The `v0.7.1` fixture embeds playwright-go v0.4702.0, whose original driver CDN no longer
+serves the required ZIP files. For that fixture only, the workflow reconstructs the same
+Playwright 1.47.2 driver layout from a checksum-pinned official `playwright-core` npm
+tarball and the image's Node runtime. Browser payloads use Playwright's current direct CDN.
+The published D2 archive remains unchanged. Other release versions use their tagged
+Dockerfile without this compatibility step.
+
+This remains a non-production regression test. The separate `Publish Docker release`
+workflow is the production publisher.
 
 ### _build.sh
 
-Called by build.sh (with --local or macOS) or build_docker.sh (on linux) to create the
-release archive.
+Called by build.sh to create a release archive.
 
 Do not invoke directly. If you want to produce a build for a single platform run build.sh
 as so:
